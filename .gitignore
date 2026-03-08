@@ -9,12 +9,10 @@ wheels/
 # Virtual environments
 .venv
 
-datasets/
+dataset/
 lab1/
 InterimReport/
-results/
 results_last/training_1
-data/
 notebooks_check/
 
 results_last/

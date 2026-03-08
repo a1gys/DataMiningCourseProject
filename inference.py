@@ -12,7 +12,7 @@ CLASS_MAP = {
 }
 
 MODEL_NAME = "algys/bertweet-finetune"
-LOGREG_PATH = "./logreg/logistic_regression_pipeline.joblib"
+LOGREG_PATH = "./results/logreg/logistic_regression_pipeline.joblib"
 
 def load_bert():
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
