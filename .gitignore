@@ -14,5 +14,11 @@ lab1/
 InterimReport/
 results_last/training_1
 notebooks_check/
+configs/
 
 results_last/
+data/
+TASKS.txt
+*.ipynb
+checkpoints/
+logs/

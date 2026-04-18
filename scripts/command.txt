@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=5 python main.py --train_dataset_path=./data/twitter_partisan/tweets_balanced_trainval.csv --test_dataset_path=./data/twitter_partisan/tweets_balanced_test.csv --model_name=zeroshot --config_path=./configs/zeroshot/config_001.yaml --train=False --log_dir=./logs/zeroshot/ --checkpoint_dir=./checkpoints/zeroshot/ --device=cuda
