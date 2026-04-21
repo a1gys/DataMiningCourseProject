@@ -51,15 +51,23 @@ def inference_gemma(config: Box,
 
     model.eval()
     predictions = []
-    ground_truth = dataset["party"].tolist()
+    if config.dataset == "twitter_partisan":
+        ground_truth = dataset["party"].tolist()
+    elif config.dataset == "mbib":
+        ground_truth = dataset["label"].tolist()
 
     start_time = time.perf_counter()
 
     print(f"Starting Zero-Shot Inference on {len(dataset)} samples")
 
+    contents = {
+        "twitter_partisan": "Classify the following tweet into one of two political parties: 'Democrat' or 'Republican'. Base your decision on the sentiment, policy focus, and terminology used. Respond with ONLY the word 'Democrat' or 'Republican'. No explanations.",
+        "mbib": "Classifty the following tweet on whether it contains political bias '1' or no '0'. Respond only with '1' or '0'. No explanations."
+    }
+
     for idx, row in tqdm(dataset.iterrows(), total=len(dataset)):
         messages = [
-            {"role": "system", "content": "Classify the following tweet into one of two political parties: 'Democrat' or 'Republican'. Base your decision on the sentiment, policy focus, and terminology used. Respond with ONLY the word 'Democrat' or 'Republican'. No explanations."},
+            {"role": "system", "content": contents[config.dataset]},
             {"role": "user", "content": row["text"]}
         ]
 
@@ -74,24 +82,32 @@ def inference_gemma(config: Box,
         response = processor.decode(outputs[0][input_len:], skip_special_tokens=False)
         processor.parse_response(response)
 
-        if "democrat" in response.lower():
-            predictions.append("D")
-        elif "republican" in response.lower():
-            predictions.append("R")
-        else:
-            predictions.append("U")
+        if config.dataset == "twitter_partisan":
+            if "democrat" in response.lower():
+                predictions.append("D")
+            elif "republican" in response.lower():
+                predictions.append("R")
+            else:
+                predictions.append("U")
+        elif config.dataset == "mbib":
+            if "0" in response.lower():
+                predictions.append(0)
+            elif "1" in response.lower():
+                predictions.append(1)
+            else:
+                predictions.append(2)
     
     end_time = time.perf_counter()
 
     acc = accuracy_score(ground_truth, predictions)
     prec, rec, f1, _ = precision_recall_fscore_support(
-        ground_truth, predictions, average="macro", labels=["Democrat", "Republican"]
+        ground_truth, predictions, average="macro"
     )
 
     run_data = {
         "metadata": {
             "model_type": "Gemma-ZeroShot",
-            "model_name": config.model.model_hf_name,
+            "model_name": config.model_hf_name,
             "timestamp": datetime.now().isoformat(),
             "config": dict(config)
         },

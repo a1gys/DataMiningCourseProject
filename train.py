@@ -7,6 +7,7 @@ from models.logreg import train_logreg, test_logreg
 from models.bertweet import train_bertweet, test_bertweet
 from models.gemma import inference_gemma
 from models.zeroshot import inference_deberta
+from models.bilstm import train_bilstm, test_bilstm
 
 def train(model,
           model_name: str,
@@ -18,7 +19,7 @@ def train(model,
         Model.LOGREG: train_logreg,
         Model.BERTWEET: train_bertweet,
         # Model.SVM: train_svm,
-        # Model.RNN: train_rnn,
+        Model.RNN: train_bilstm,
     }
 
     constructor = dispatch_table[model_type]
@@ -33,7 +34,7 @@ def test(model_name: str,
         Model.LOGREG: test_logreg,
         Model.BERTWEET: test_bertweet,
         # Model.SVM: test_svm,
-        # Model.RNN: test_rnn,
+        Model.RNN: test_bilstm,
         Model.GEMMA: inference_gemma,
         Model.ZEROSHOT: inference_deberta
     }

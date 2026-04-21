@@ -13,12 +13,12 @@ def load_model_config(config_path) -> Box:
     return Box(model_config)
 
 def main(args: Box):
-    
     config = load_model_config(args.config_path)
     
     model = get_model(model_name=args.model_name,
                       model_config=config)
 
+    config.dataset = args.dataset
     config.log_dir = args.log_dir
     config.config_path = args.config_path
     config.checkpoint_dir = args.checkpoint_dir
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("Political Party Classification")
 
     # Dataset arguments
-    parser.add_argument("--dataset", type=str, default="twitter_partisan", choices=["twitter_partisan"])
+    parser.add_argument("--dataset", type=str, default="twitter_partisan", choices=["twitter_partisan", "mbib"])
     parser.add_argument("--train_dataset_path", type=str)
     parser.add_argument("--test_dataset_path", type=str)
 
@@ -55,8 +55,8 @@ if __name__ == "__main__":
 
     # Training arguments
     parser.add_argument("--device", type=str, default="cpu")
-    parser.add_argument("--train", type=bool, default=True)
-    parser.add_argument("--test", type=bool, default=True)
+    parser.add_argument("--train", action="store_true")
+    parser.add_argument("--test", action="store_true")
     parser.add_argument("--log_dir", type=str)
     parser.add_argument("--checkpoint_dir", type=str)
 

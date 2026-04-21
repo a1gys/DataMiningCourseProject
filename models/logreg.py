@@ -44,7 +44,10 @@ def train_logreg(model: Pipeline,
     # y = dataset["label"]
     
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
-    stratify_key = dataset['source'] + "_" + dataset['party']
+    if config.dataset == "twitter_partisan":
+        stratify_key = dataset['source'] + "_" + dataset['party']
+    elif config.dataset == "mbib":
+        stratify_key = dataset["label"]
 
     run_data = {
         "metadata": {

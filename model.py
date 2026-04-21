@@ -7,6 +7,7 @@ from models.logreg import build_logreg
 from models.bertweet import build_bertweet
 from models.gemma import build_gemma_zero_shot
 from models.zeroshot import build_deberta_zero_shot
+from models.bilstm import build_bilstm
 
 class Model(str, Enum):
     LOGREG = "logreg"
@@ -34,7 +35,7 @@ def _init_svm(config: Box):
     ...
 
 def _init_rnn(config: Box):
-    ...
+    return build_bilstm(config=config)
 
 def _init_gemma(config: Box):
     return build_gemma_zero_shot(config=config)

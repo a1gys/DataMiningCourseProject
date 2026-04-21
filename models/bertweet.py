@@ -48,38 +48,28 @@ def compute_metrics(eval_pred):
     }
 
 def get_best_checkpoint(config: Box) -> str:
-    """
-    Parses the training logs to find the fold with the highest validation F1 score.
-    Returns the path to the corresponding model checkpoint.
-    """
-    # 1. Construct the path to the master training log
-    log_name = config.config_path.split("/")[-1].replace("config", "bertweet_train").replace("yaml", "json")
-    master_log_path = os.path.join(config.log_dir, "train", log_name)
+    config_num = config.config_path.split("/")[-1].replace("config_", "").replace(".yaml", "")
     
-    if not os.path.exists(master_log_path):
-        raise FileNotFoundError(f"Could not find training log at {master_log_path}. Did the training finish?")
+    curr_ckpt_path = os.path.join(config.checkpoint_dir, config_num)
+    folds = os.listdir(curr_ckpt_path)
 
-    with open(master_log_path, "r") as f:
-        run_data = json.load(f)
-
-    best_f1 = -1.0
-    best_fold = 1
-
-    for fold_info in run_data["folds"]:
-        # We use the final_validation metrics we stored earlier
-        current_f1 = fold_info["final_validation"].get("val_f1_macro", 0.0)
-        
-        if current_f1 > best_f1:
-            best_f1 = current_f1
-            best_fold = fold_info["fold"]
-
-    # 4. Construct the path to that fold's saved weights
-    best_checkpoint_path = os.path.join(config.checkpoint_dir, f"fold_{best_fold}")
+    best_f1 = 0.0
+    best_fold = 0
     
-    print(f"Best model found in Fold {best_fold} (F1: {best_f1:.4f})")
-    print(f"Path: {best_checkpoint_path}")
-    
-    return best_checkpoint_path
+    run_path = os.path.join(curr_ckpt_path, "fold_4", "run.json")
+
+    with open(run_path) as file:
+        run_data = json.load(file)
+
+        for fold in range(5):
+            f1 = run_data["folds"][fold]["validation"]["f1_macro"]
+
+            if f1 > best_f1:
+                best_f1 = f1
+                best_fold = fold
+    best_path = os.path.join(curr_ckpt_path, f"fold_{best_fold}")
+    return best_path
+
 
 def train_bertweet(model,
                    config: Box,
@@ -87,7 +77,10 @@ def train_bertweet(model,
     tokenizer = AutoTokenizer.from_pretrained(config.model_hf_name, use_fast=False)
 
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
-    stratify_key = dataset['source'] + "_" + dataset['party']
+    if config.dataset == "twitter_partisan":
+        stratify_key = dataset['source'] + "_" + dataset['party']
+    elif config.dataset == "mbib":
+        stratify_key = dataset["label"]
 
     run_data = {
         "metadata": {"model_type": "BERTweet", "config": dict(config)},
@@ -111,7 +104,8 @@ def train_bertweet(model,
         train_ds = train_ds.map(tokenize_function, batched=True)
         val_ds = val_ds.map(tokenize_function, batched=True)
 
-        log_dir = os.path.join(config.log_dir, "train")
+        config_name = config.config_path.split("/")[-1].replace("config", "train").replace(".yaml", "")
+        log_dir = os.path.join(config.log_dir, "train", config_name)
         output_dir = os.path.join(log_dir, f"fold_{fold}")
         os.makedirs(output_dir, exist_ok=True)
 
@@ -127,7 +121,10 @@ def train_bertweet(model,
             load_best_model_at_end=True, # Required for EarlyStopping
             metric_for_best_model="f1_macro",
             logging_steps=10,
-            report_to="none" 
+            report_to="none",
+            lr_scheduler_type=config.model.lr_scheduler_type,
+            warmup_ratio=config.model.warmup_ratio,
+            label_smoothing_factor=config.model.label_smoothing,
         )
 
         fold_model = build_bertweet(config)
@@ -157,7 +154,7 @@ def train_bertweet(model,
                     "train_loss": entry.get("loss") 
                 })
 
-        checkpoint_path = os.path.join(config.checkpoint_dir, f"fold_{fold+1}")
+        checkpoint_path = os.path.join(config.checkpoint_dir, config_name, f"fold_{fold}")
         os.makedirs(checkpoint_path, exist_ok=True)
         trainer.save_model(checkpoint_path)
         tokenizer.save_pretrained(checkpoint_path)
@@ -170,7 +167,7 @@ def train_bertweet(model,
         fold_end = time.perf_counter()
 
         fold_entry = {
-            "fold": fold + 1,
+            "fold": fold,
             "timings": {
                 "training_seconds": round(train_end - train_start, 4),
                 "total_fold_seconds": round(fold_end - fold_start, 4)
@@ -246,9 +243,43 @@ def test_bertweet(config: Box,
         }
     }
 
-    log_name = config.config_path.split("/")[-1].replace("config", "bertweet_test").replace("yaml", "json")
+    log_name = config.config_path.split("/")[-1].replace("config", "test").replace("yaml", "json")
     with open(os.path.join(log_dir, log_name), "w") as f:
         json.dump(test_results, f, indent=4)
 
     print(f"Testing complete. F1 Score: {test_results['metrics']['f1_macro']:.4f}")
     print(f"Test logs saved to {log_dir}")
+
+
+if __name__ == "__main__":
+    config = Box({})
+    config_path = "/home/gpuhead-2/data_mining/DataMiningCourseProject/configs/bertweet/config_306.yaml"
+    config.config_path = config_path
+    config.log_dir = "/home/gpuhead-2/data_mining/DataMiningCourseProject/logs/bertweet_mbib"
+    config.checkpoint_dir = "/home/gpuhead-2/data_mining/DataMiningCourseProject/checkpoints/bertweet_mbib"
+
+    config_num = config.config_path.split("/")[-1].replace("config_", "").replace(".yaml", "")
+    
+    curr_ckpt_path = os.path.join(config.checkpoint_dir, config_num)
+    folds = os.listdir(curr_ckpt_path)
+
+    best_f1 = 0.0
+    best_fold = 0
+    
+    run_path = os.path.join(curr_ckpt_path, "fold_5", "run.json")
+
+    with open(run_path) as file:
+        run_data = json.load(file)
+
+        for fold in range(1, 5):
+            f1 = run_data["folds"][fold]["validation"]["f1_macro"]
+
+            if f1 > best_f1:
+                best_f1 = f1
+                best_fold = fold
+
+
+    best_path = os.path.join(curr_ckpt_path, f"fold_{best_fold}")
+    
+    tokenizer = AutoTokenizer.from_pretrained(best_path, use_fast=False)
+    model = AutoModelForSequenceClassification.from_pretrained(best_path)

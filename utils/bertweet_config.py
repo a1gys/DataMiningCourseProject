@@ -10,12 +10,23 @@ from pathlib import Path
 search_space = {
     "model": {
         "model_name": ["vinai/bertweet-base"],
-        "learning_rate": [2e-5, 5e-5],
-        "batch_size": [16, 32],
-        "epochs": [3],
-        "weight_decay": [0.01],
-        "max_length": [128],
-        "warmup_steps": [0]
+
+        "learning_rate": [2e-5, 3e-5, 5e-5],
+        "lr_scheduler_type": ["linear", "cosine"],
+        "warmup_ratio": [0.0, 0.1],
+
+        # training setup
+        "batch_size": [128, 256],
+        "epochs": [3, 5],
+
+        # regularization
+        "weight_decay": [0.0, 0.01],
+        "dropout": [0.1, 0.3],
+        "label_smoothing": [0.0, 0.1],
+
+        # input
+        "max_length": [128, 256],
+
     }
 }
 
